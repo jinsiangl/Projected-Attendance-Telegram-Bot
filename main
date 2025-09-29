@@ -1,0 +1,57 @@
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
+scope = ["https://docs.google.com/spreadsheets/d/1KE2sJTNXif1KNJot1m6hVhWEOggprIiwh1lj8wqOYLw/edit?usp=sharing",
+         "https://www.googleapis.com/auth/drive"]
+
+creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
+client = gspread.authorize(creds)
+
+sheet = client.open("MyAutomationSheet").sheet1
+
+from telegram.ext import Updater, CommandHandler
+
+def get_data(update, context):
+    rows = sheet.get_all_values()
+    response = "\n".join([", ".join(row) for row in rows])
+    update.message.reply_text(f"📊 Sheet Data:\n{response}")
+
+updater = Updater('YOUR_BOT_TOKEN')
+dp = updater.dispatcher
+dp.add_handler(CommandHandler('sheet', get_data))
+updater.start_polling()
+updater.idle()
+
+def add_entry(update, context):
+    args = context.args
+    if len(args) >= 2:
+        name, score = args[0], args[1]
+        sheet.append_row([name, score])
+        update.message.reply_text("✅ New entry added.")
+    else:
+        update.message.reply_text("❗ Usage: /add John 85")
+
+dp.add_handler(CommandHandler('add', add_entry))
+
+def edit_cell(update, context):
+    args = context.args
+    if len(args) == 3:
+        row = int(args[0])
+        col = int(args[1])
+        value = args[2]
+        sheet.update_cell(row, col, value)
+        update.message.reply_text(f"📝 Updated cell ({row},{col}) to '{value}'")
+    else:
+        update.message.reply_text("❗ Usage: /edit 2 1 David")
+
+dp.add_handler(CommandHandler('edit', edit_cell))
+
+from apscheduler.schedulers.background import BackgroundScheduler
+
+def daily_report():
+    summary = sheet.row_values(1)
+    bot.send_message(chat_id='YOUR_CHAT_ID', text=f"📅 Daily Report:\n{summary}")
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(daily_report, 'cron', hour=8)
+scheduler.start()
