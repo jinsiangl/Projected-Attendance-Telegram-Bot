@@ -1,22 +1,26 @@
+from telegram.ext import Application, MessageHandler, Updater, CommandHandler,filters
+
+async def reply(update, context):
+    await update.message.reply_text("Hello there!")
+
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-scope = ["https://docs.google.com/spreadsheets/d/1KE2sJTNXif1KNJot1m6hVhWEOggprIiwh1lj8wqOYLw/edit?usp=sharing",
+scope = ["https://spreadsheets.google.com/feeds",
          "https://www.googleapis.com/auth/drive"]
 
 creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
 client = gspread.authorize(creds)
 
-sheet = client.open("MyAutomationSheet").sheet1
-
-from telegram.ext import Updater, CommandHandler
+sheet = client.open("https://docs.google.com/spreadsheets/d/1KE2sJTNXif1KNJot1m6hVhWEOggprIiwh1lj8wqOYLw/edit?usp=sharing").sheet1
+sheet_ = client.open("https://docs.google.com/spreadsheets/d/1KE2sJTNXif1KNJot1m6hVhWEOggprIiwh1lj8wqOYLw/edit?usp=sharing").sheet2
 
 def get_data(update, context):
     rows = sheet.get_all_values()
     response = "\n".join([", ".join(row) for row in rows])
     update.message.reply_text(f"📊 Sheet Data:\n{response}")
 
-updater = Updater('YOUR_BOT_TOKEN')
+updater = Updater('8480705082:AAGIbFDs-Z5q7KWT88FjHD-exr9NG5QGvqQ')
 dp = updater.dispatcher
 dp.add_handler(CommandHandler('sheet', get_data))
 updater.start_polling()
@@ -25,11 +29,11 @@ updater.idle()
 def add_entry(update, context):
     args = context.args
     if len(args) >= 2:
-        name, score = args[0], args[1]
-        sheet.append_row([name, score])
+        name, CG, category, date = args[0], args[1], args[2], args[3]
+        sheet.append_row([name, CG, category, date])
         update.message.reply_text("✅ New entry added.")
     else:
-        update.message.reply_text("❗ Usage: /add John 85")
+        update.message.reply_text("❗ Usage: /add JinSiang A1 M 03102025")
 
 dp.add_handler(CommandHandler('add', add_entry))
 
@@ -49,9 +53,26 @@ dp.add_handler(CommandHandler('edit', edit_cell))
 from apscheduler.schedulers.background import BackgroundScheduler
 
 def daily_report():
-    summary = sheet.row_values(1)
+    summary = sheet_.row_values()
     bot.send_message(chat_id='YOUR_CHAT_ID', text=f"📅 Daily Report:\n{summary}")
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(daily_report, 'cron', hour=8)
 scheduler.start()
+
+def main():
+    """
+    Handles the initial launch of the program (entry point).
+    """
+    token = 8480705082:AAGIbFDs-Z5q7KWT88FjHD-exr9NG5QGvqQ
+    application = Application.builder().token(token).concurrent_updates(True).read_timeout(30).write_timeout(30).build()
+    application.add_handler(MessageHandler(filters.TEXT, reply))
+    application.add_handler(CommandHandler("hello", reply)) # new command handler here
+    print("Telegram Bot started!", flush=True)
+    application.run_polling()
+
+if __name__ == '__main__':
+    main()
+
+
+
